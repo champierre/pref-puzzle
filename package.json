@@ -1,0 +1,40 @@
+{
+  "name": "pref-puzzle",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "data:fetch": "npx tsx scripts/fetch-boundaries.ts",
+    "data:dem": "npx tsx scripts/fetch-dem.ts",
+    "data:stl": "python3 scripts/gen_stl.py"
+  },
+  "dependencies": {
+    "next": "^14",
+    "react": "^18",
+    "react-dom": "^18",
+    "three": "^0.165",
+    "@react-three/fiber": "^8.16",
+    "@react-three/drei": "^9.105",
+    "opentype.js": "^1.3",
+    "@turf/turf": "^6.5",
+    "earcut": "^2.2",
+    "jszip": "^3.10",
+    "idb": "^8.0",
+    "tailwindcss": "^3.4",
+    "postcss": "^8",
+    "autoprefixer": "^10"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "tsx": "^4",
+    "fast-xml-parser": "^4.4",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/three": "^0.165",
+    "@types/earcut": "^2.1",
+    "@types/opentype.js": "^1.3"
+  }
+}
