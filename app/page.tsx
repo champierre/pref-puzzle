@@ -40,40 +40,43 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="max-w-xl mx-auto px-4 py-10 flex flex-col gap-8">
-        <header>
-          <h1 className="text-2xl font-bold mb-1">関東 3D 都県パズル</h1>
-          <p className="text-gray-400 text-sm">
-            国土地理院DEMから生成した3Dプリント用STLファイルです。<br />
-            zoom=12 / decimation=4 / zScale=5.0（本土のみ、離島除外）
+      <div className="max-w-xl mx-auto px-4 py-12 flex flex-col gap-10">
+
+        <header className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold tracking-tight">関東 3D 都県パズル</h1>
+          <p className="text-gray-400 leading-relaxed">
+            関東7都県の地形を 3D プリントできるパズルです。<br />
+            国土地理院の標高データから生成した STL ファイルを配布しています。
           </p>
         </header>
 
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col divide-y divide-gray-800">
           {KANTO_PREFECTURES.map((p) => (
-            <li key={p.code} className="flex items-center justify-between bg-gray-900 rounded-lg px-4 py-3">
-              <div className="flex items-center gap-3">
-                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: p.color }} />
+            <li key={p.code} className="flex items-center justify-between py-4 gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="w-1 h-8 rounded-full flex-shrink-0" style={{ background: p.color }} />
                 <div>
-                  <span className="font-medium">{p.name}</span>
-                  <span className="ml-2 text-gray-400 text-sm">{p.nameEn}</span>
+                  <span className="font-semibold">{p.name}</span>
+                  <span className="ml-2 text-gray-500 text-sm">{p.nameEn}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-4 flex-shrink-0">
                 <button
                   onClick={() => setPreview({ code: p.code, name: p.name, color: p.color })}
-                  className="px-3 py-1.5 rounded text-sm font-medium bg-gray-700 hover:bg-gray-600"
+                  className="text-sm text-gray-500 hover:text-gray-200 transition-colors"
                 >
                   プレビュー
                 </button>
-                <a
-                  href={`${BASE_PATH}/data/stl/${p.code}.stl`}
-                  download={`${p.code}_${p.nameEn}.stl`}
-                  className="flex items-center gap-2 bg-blue-700 hover:bg-blue-600 px-3 py-1.5 rounded text-sm font-medium"
-                >
-                  STL
-                  <span className="text-blue-300 text-xs">{FILE_SIZES[p.code]}</span>
-                </a>
+                <div className="flex flex-col items-end gap-0.5">
+                  <a
+                    href={`${BASE_PATH}/data/stl/${p.code}.stl`}
+                    download={`${p.code}_${p.nameEn}.stl`}
+                    className="bg-blue-600 hover:bg-blue-500 transition-colors px-3 py-1.5 rounded text-sm font-medium"
+                  >
+                    ダウンロード
+                  </a>
+                  <span className="text-gray-600 text-xs">{FILE_SIZES[p.code]}</span>
+                </div>
               </div>
             </li>
           ))}
@@ -82,18 +85,17 @@ export default function HomePage() {
         <button
           onClick={downloadZip}
           disabled={zipping}
-          className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 rounded-lg font-semibold"
+          className="w-full py-3 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 transition-colors rounded-lg font-semibold"
         >
-          {zipping ? 'ZIP 作成中...' : '全都県まとめて ZIP DL'}
+          {zipping ? 'ZIP 作成中...' : '全都県まとめてダウンロード（ZIP）'}
         </button>
 
-        <footer className="text-xs text-gray-500 border-t border-gray-800 pt-4">
-          地形: <a href="https://maps.gsi.go.jp/development/ichiran.html" className="underline">国土地理院基盤地図情報数値標高モデル</a> ／
-          行政界: <a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-v3_1.html" className="underline">国土交通省国土数値情報 N03-2024</a>
+        <footer className="text-xs text-gray-600 border-t border-gray-800 pt-5 flex flex-col gap-1">
+          <span>地形: <a href="https://maps.gsi.go.jp/development/ichiran.html" className="underline hover:text-gray-400 transition-colors">国土地理院 基盤地図情報数値標高モデル</a></span>
+          <span>行政界: <a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-v3_1.html" className="underline hover:text-gray-400 transition-colors">国土交通省 国土数値情報 N03-2024</a></span>
         </footer>
       </div>
 
-      {/* STL プレビューモーダル */}
       {preview && (
         <div
           className="fixed inset-0 z-50 flex flex-col bg-gray-950"
@@ -101,13 +103,13 @@ export default function HomePage() {
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 flex-shrink-0">
             <div className="flex items-center gap-3">
-              <span className="w-3 h-3 rounded-full" style={{ background: preview.color }} />
-              <span className="font-medium">{preview.name}</span>
-              <span className="text-gray-400 text-xs">ドラッグで回転 / スクロールでズーム</span>
+              <span className="w-1 h-5 rounded-full flex-shrink-0" style={{ background: preview.color }} />
+              <span className="font-semibold">{preview.name}</span>
+              <span className="text-gray-500 text-xs">ドラッグで回転 / スクロールでズーム</span>
             </div>
             <button
               onClick={() => setPreview(null)}
-              className="text-gray-400 hover:text-white text-xl leading-none px-2"
+              className="text-gray-500 hover:text-white transition-colors text-xl leading-none px-2"
               aria-label="閉じる"
             >
               ✕

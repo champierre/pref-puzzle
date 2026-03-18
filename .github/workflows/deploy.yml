@@ -28,6 +28,22 @@ jobs:
           node-version: 20
           cache: npm
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install numpy pillow
+
+      - name: Cache DEM tiles
+        uses: actions/cache@v4
+        with:
+          path: public/data/dem
+          key: dem-tiles-v1
+
+      - name: Generate STL files
+        run: python3 scripts/gen_stl.py
+
       - run: npm ci
 
       - run: npm run build
