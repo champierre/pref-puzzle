@@ -23,16 +23,39 @@ METERS_PER_DEGREE = 111320.0
 COS_CENTER = math.cos(PROJ_CENTER_LAT * math.pi / 180)
 TILE_SIZE = 256
 DEM_TILE_URL = 'https://cyberjapandata.gsi.go.jp/xyz/dem/{z}/{x}/{y}.txt'
-TOKYO_PUZZLE_BBOX = dict(minLon=138.9, maxLon=139.95, minLat=35.4, maxLat=35.9)
+PUZZLE_BBOXES = {
+    '08': dict(minLon=139.50, maxLon=141.00, minLat=35.60, maxLat=37.00),  # 茨城
+    '09': dict(minLon=139.20, maxLon=140.40, minLat=36.10, maxLat=37.20),  # 栃木
+    '10': dict(minLon=138.30, maxLon=139.80, minLat=35.90, maxLat=37.10),  # 群馬
+    '11': dict(minLon=138.60, maxLon=140.00, minLat=35.60, maxLat=36.40),  # 埼玉
+    '12': dict(minLon=139.60, maxLon=141.00, minLat=34.80, maxLat=36.20),  # 千葉
+    '13': dict(minLon=138.90, maxLon=139.95, minLat=35.40, maxLat=35.90),  # 東京（本土）
+    '14': dict(minLon=138.80, maxLon=140.00, minLat=35.00, maxLat=35.80),  # 神奈川
+}
 
 # デフォルトパラメータ
 ZOOM       = 12
-XY_SCALE   = 1 / 50000
-Z_SCALE    = 2.0
-BASE_THICK = 3.0
-DECIMATION = 4   # 1 にすると ~200MB/県
+XY_SCALE      = 1.5 / 1660
+Z_SCALE       = 5.0
+BASE_THICK    = 3.0
+DECIMATION    = 4   # 1 にすると ~200MB/県
+CLEARANCE_PX  = 8   # 境界クリアランス（ピクセル数、約0.27mm/辺）
 
 CODES = ['08', '09', '10', '11', '12', '13', '14']
+
+# ── 彫刻設定 ──────────────────────────────────────────────────────────────
+ENGRAVE_DEPTH   = 0.4   # 彫り深さ (mm)
+ENGRAVE_TEXT_MM = 5.0   # テキスト行高さ (mm)
+
+PREFECTURE_INFO = {
+    '08': ('08', '茨城県', '水戸市'),
+    '09': ('09', '栃木県', '宇都宮市'),
+    '10': ('10', '群馬県', '前橋市'),
+    '11': ('11', '埼玉県', 'さいたま市'),
+    '12': ('12', '千葉県', '千葉市'),
+    '13': ('13', '東京都', '新宿区'),
+    '14': ('14', '神奈川県', '横浜市'),
+}
 
 # ── タイル座標変換 ─────────────────────────────────────────────────────────
 def lon_to_tile_x(lon, z): return int((lon + 180) / 360 * (2**z))
@@ -104,30 +127,20 @@ def fetch_dem_grid(bbox, dem_dir):
 
 # ── 境界BOX ────────────────────────────────────────────────────────────────
 def compute_bbox(geometry, code):
-    if code == '13':
-        return TOKYO_PUZZLE_BBOX
-    lons, lats = [], []
-    def walk(c):
-        if isinstance(c, list) and len(c) == 2 and isinstance(c[0], (int, float)):
-            lons.append(c[0]); lats.append(c[1])
-        elif isinstance(c, list):
-            for x in c: walk(x)
-    walk(geometry['coordinates'])
-    return dict(minLon=min(lons), maxLon=max(lons), minLat=min(lats), maxLat=max(lats))
+    return PUZZLE_BBOXES[code]
 
 # ── ポリゴン抽出 ──────────────────────────────────────────────────────────
 def feature_to_polygons(feature, code):
     geom = feature['geometry']
+    b = PUZZLE_BBOXES[code]
     polygons = []
     def add_poly(coords):
         rings = [[(p[0], p[1]) for p in ring] for ring in coords]
-        if code == '13':
-            outer = rings[0]
-            cx = sum(p[0] for p in outer) / len(outer)
-            cy = sum(p[1] for p in outer) / len(outer)
-            b = TOKYO_PUZZLE_BBOX
-            if cx < b['minLon'] or cx > b['maxLon'] or cy < b['minLat'] or cy > b['maxLat']:
-                return
+        outer = rings[0]
+        cx = sum(p[0] for p in outer) / len(outer)
+        cy = sum(p[1] for p in outer) / len(outer)
+        if cx < b['minLon'] or cx > b['maxLon'] or cy < b['minLat'] or cy > b['maxLat']:
+            return
         polygons.append(rings)
     if geom['type'] == 'Polygon':
         add_poly(geom['coordinates'])
@@ -162,6 +175,79 @@ def clip_dem(bbox, values, polygons):
             if c0 <= c1:
                 clipped[r, c0:c1+1] = values[r, c0:c1+1]
     return clipped
+
+# ── 境界クリアランス ──────────────────────────────────────────────────────
+def apply_clearance(clipped, px):
+    """有効セルマスクを px ピクセル内側に縮小してピース間の隙間を確保する。"""
+    if px <= 0:
+        return clipped
+    valid = (~np.isnan(clipped)).astype(np.uint8)
+    # 上下左右に px 回シフトしながら AND をとる（マンハッタン erosion）
+    eroded = valid.copy()
+    for _ in range(px):
+        eroded &= np.roll(eroded,  1, axis=0)
+        eroded &= np.roll(eroded, -1, axis=0)
+        eroded &= np.roll(eroded,  1, axis=1)
+        eroded &= np.roll(eroded, -1, axis=1)
+        # 端が巻き込まれないよう境界行列を 0 にリセット
+        eroded[0, :] = 0; eroded[-1, :] = 0
+        eroded[:, 0] = 0; eroded[:, -1] = 0
+    result = clipped.copy()
+    result[eroded == 0] = np.nan
+    return result
+
+# ── テキスト彫刻 ──────────────────────────────────────────────────────────
+def find_jp_font():
+    candidates = [
+        '/System/Library/Fonts/AquaKana.ttc',
+        '/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc',
+        '/System/Library/Fonts/Hiragino Sans GB.ttc',
+        '/System/Library/Fonts/Supplemental/AppleGothic.ttf',
+        '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    return None
+
+def make_text_mask(values, text_lines, font_path, px_per_mm):
+    """底面中央にテキストマスクを生成する（裏面から読めるよう左右ミラー）。"""
+    from PIL import Image, ImageDraw, ImageFont
+    rows, cols = values.shape
+    valid = ~np.isnan(values)
+    if not valid.any() or font_path is None:
+        return np.zeros((rows, cols), dtype=bool)
+    font_size = max(8, int(ENGRAVE_TEXT_MM * px_per_mm))
+    try:
+        font = ImageFont.truetype(font_path, font_size)
+    except Exception:
+        print('  警告: フォント読み込み失敗。テキスト彫刻スキップ。')
+        return np.zeros((rows, cols), dtype=bool)
+    dummy = ImageDraw.Draw(Image.new('L', (1, 1)))
+    line_boxes = [dummy.textbbox((0, 0), l, font=font) for l in text_lines]
+    pad = font_size // 4
+    img_w = max(b[2] - b[0] for b in line_boxes) + pad * 2
+    img_h = sum(b[3] - b[1] for b in line_boxes) + pad * (len(text_lines) + 1)
+    img = Image.new('L', (img_w, img_h), 0)
+    draw = ImageDraw.Draw(img)
+    y = pad
+    for line, box in zip(text_lines, line_boxes):
+        draw.text((pad, y), line, font=font, fill=255)
+        y += (box[3] - box[1]) + pad
+    img = img.transpose(Image.FLIP_LEFT_RIGHT)  # 裏面から読めるようミラー
+    img_arr = np.array(img) > 128
+    img_h2, img_w2 = img_arr.shape
+    r_coords, c_coords = np.where(valid)
+    row_c = int(np.median(r_coords))
+    col_c = int(np.median(c_coords))
+    r0 = row_c - img_h2 // 2
+    c0 = col_c - img_w2 // 2
+    mask = np.zeros((rows, cols), dtype=bool)
+    r_s = max(0, r0); r_e = min(rows, r0 + img_h2)
+    c_s = max(0, c0); c_e = min(cols, c0 + img_w2)
+    mask[r_s:r_e, c_s:c_e] = img_arr[r_s-r0:r_e-r0, c_s-c0:c_e-c0]
+    mask &= valid
+    return mask
 
 # ── ワールド座標グリッド ───────────────────────────────────────────────────
 def world_grid(bbox, values):
@@ -204,7 +290,9 @@ def build_terrain(bbox, values, dec):
     wz_f = np.where(np.isnan(wz), sea_z, wz).astype(np.float32)
 
     valid_z = wz_f[~np.isnan(wz)]
-    base_z = float(valid_z.min()) - BASE_THICK * XY_SCALE if len(valid_z) else 0.0
+    min_valid_z = float(valid_z.min()) if len(valid_z) else 0.0
+    # 海抜0m を基準にすることで、低地でも BASE_THICK の厚さを確保
+    base_z = min(min_valid_z, 0.0) - BASE_THICK
 
     R, C = np.meshgrid(np.arange(0, rows-dec, dec), np.arange(0, cols-dec, dec), indexing='ij')
     R2 = np.minimum(R + dec, rows-1)
@@ -284,10 +372,11 @@ def build_walls(bbox, values, base_z, dec):
     return np.concatenate(parts) if parts else np.zeros(0, dtype=STL_TRI)
 
 # ── 底面メッシュ ──────────────────────────────────────────────────────────
-def build_bottom(bbox, values, base_z, dec):
+def build_bottom(bbox, values, base_z, dec, text_mask=None):
     rows, cols = values.shape
     wx, wy, _ = world_grid(bbox, values)
-    bz = np.float32(base_z)
+    bz_bg  = np.float32(base_z)
+    bz_txt = np.float32(base_z + ENGRAVE_DEPTH)
 
     R, C = np.meshgrid(np.arange(0, rows-dec, dec), np.arange(0, cols-dec, dec), indexing='ij')
     R2 = np.minimum(R + dec, rows-1)
@@ -297,17 +386,60 @@ def build_bottom(bbox, values, base_z, dec):
     m = ~(np.isnan(v00) & np.isnan(v10) & np.isnan(v01) & np.isnan(v11))
     R=R[m]; C=C[m]; R2=R2[m]; C2=C2[m]
 
-    bz_col = np.full(len(R), bz, dtype=np.float32)
-    def xyz_bot(r, c): return np.stack([wx[r,c], wy[r,c], bz_col], axis=1).astype(np.float32)
+    if text_mask is not None:
+        bz_cell = np.where(text_mask[R, C], bz_txt, bz_bg).astype(np.float32)
+    else:
+        bz_cell = np.full(len(R), bz_bg, dtype=np.float32)
+
+    def xyz_bot(r, c): return np.stack([wx[r,c], wy[r,c], bz_cell], axis=1).astype(np.float32)
     A=xyz_bot(R,C); B=xyz_bot(R2,C); C_=xyz_bot(R,C2); D=xyz_bot(R2,C2)
 
-    # 逆巻きで下向き法線
     t1 = make_tris(A, B, C_)
     t2 = make_tris(B, D, C_)
-    # 法線を強制的に (0,0,-1) に上書き
     tris = np.concatenate([t1, t2])
     tris['n'] = (0.0, 0.0, -1.0)
     return tris
+
+def build_text_walls(bbox, values, base_z, dec, text_mask):
+    """テキスト彫刻領域と通常底面の境界に垂直壁を生成する。"""
+    if text_mask is None or not text_mask.any():
+        return np.zeros(0, dtype=STL_TRI)
+    rows, cols = values.shape
+    wx, wy, _ = world_grid(bbox, values)
+    bz_bg  = np.float32(base_z)
+    bz_txt = np.float32(base_z + ENGRAVE_DEPTH)
+
+    R, C = np.meshgrid(np.arange(0, rows, dec), np.arange(0, cols, dec), indexing='ij')
+    R2 = np.minimum(R + dec, rows-1)
+    C2 = np.minimum(C + dec, cols-1)
+    valid    = ~np.isnan(values[R, C])
+    is_text  = text_mask[R, C]
+
+    def nbr_non_text(dr, dc):
+        nr = R + dr; nc = C + dc
+        oob = (nr < 0) | (nr >= rows) | (nc < 0) | (nc >= cols)
+        nr_s = np.clip(nr, 0, rows-1); nc_s = np.clip(nc, 0, cols-1)
+        return valid & is_text & ~oob & ~text_mask[nr_s, nc_s] & ~np.isnan(values[nr_s, nc_s])
+
+    bz_fn = lambda n: np.full(n, bz_txt, dtype=np.float32)
+    parts = []
+    m = nbr_non_text(-dec, 0)  # 上隣が非テキスト
+    if m.any():
+        r,c,c2 = R[m],C[m],C2[m]; ba = bz_fn(m.sum())
+        parts.append(_wall_quads(wx[r,c2],wy[r,c2],ba, wx[r,c],wy[r,c],ba, bz_bg))
+    m = nbr_non_text(dec, 0)   # 下隣が非テキスト
+    if m.any():
+        r2,c,c2 = R2[m],C[m],C2[m]; ba = bz_fn(m.sum())
+        parts.append(_wall_quads(wx[r2,c],wy[r2,c],ba, wx[r2,c2],wy[r2,c2],ba, bz_bg))
+    m = nbr_non_text(0, -dec)  # 左隣が非テキスト
+    if m.any():
+        r,r2,c = R[m],R2[m],C[m]; ba = bz_fn(m.sum())
+        parts.append(_wall_quads(wx[r,c],wy[r,c],ba, wx[r2,c],wy[r2,c],ba, bz_bg))
+    m = nbr_non_text(0, dec)   # 右隣が非テキスト
+    if m.any():
+        r,r2,c2 = R[m],R2[m],C2[m]; ba = bz_fn(m.sum())
+        parts.append(_wall_quads(wx[r2,c2],wy[r2,c2],ba, wx[r,c2],wy[r,c2],ba, bz_bg))
+    return np.concatenate(parts) if parts else np.zeros(0, dtype=STL_TRI)
 
 # ── STL 書き出し ──────────────────────────────────────────────────────────
 def write_stl(path, tri_arrays):
@@ -338,8 +470,18 @@ def gen_one(code, base_dir, dec):
     print('  クリッピング中...')
     polygons = feature_to_polygons(feature, code)
     clipped  = clip_dem(grid_bbox, values, polygons)
+    clipped  = apply_clearance(clipped, CLEARANCE_PX)
     valid_n  = int(np.sum(~np.isnan(clipped)))
     print(f'  有効セル: {valid_n:,}')
+
+    print('  テキストマスク生成...')
+    code_str, pref_name, capital = PREFECTURE_INFO.get(code, (code, code, ''))
+    grid_pixel_lon = (grid_bbox['maxLon'] - grid_bbox['minLon']) / clipped.shape[1]
+    grid_pixel_mm  = grid_pixel_lon * COS_CENTER * METERS_PER_DEGREE * XY_SCALE
+    px_per_mm = 1.0 / grid_pixel_mm
+    jp_font   = find_jp_font()
+    text_mask = make_text_mask(clipped, [code_str, pref_name, capital], jp_font, px_per_mm)
+    print(f'  テキストピクセル: {text_mask.sum():,}')
 
     print('  地形メッシュ生成...')
     terrain_tris, base_z = build_terrain(grid_bbox, clipped, dec)
@@ -350,11 +492,15 @@ def gen_one(code, base_dir, dec):
     print(f'  壁 tri: {len(wall_tris):,}')
 
     print('  底面メッシュ生成...')
-    bot_tris = build_bottom(grid_bbox, clipped, base_z, dec)
+    bot_tris = build_bottom(grid_bbox, clipped, base_z, dec, text_mask)
     print(f'  底面 tri: {len(bot_tris):,}')
 
+    print('  テキスト壁生成...')
+    txt_wall_tris = build_text_walls(grid_bbox, clipped, base_z, dec, text_mask)
+    print(f'  テキスト壁 tri: {len(txt_wall_tris):,}')
+
     os.makedirs(out_dir, exist_ok=True)
-    write_stl(out_path, [terrain_tris, wall_tris, bot_tris])
+    write_stl(out_path, [terrain_tris, wall_tris, bot_tris, txt_wall_tris])
     mb = os.path.getsize(out_path) / (1024**2)
     total = len(terrain_tris) + len(wall_tris) + len(bot_tris)
     print(f'  完了: {out_path}  ({total:,} tri, {mb:.1f} MB)')
