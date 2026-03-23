@@ -44,8 +44,8 @@ CLEARANCE_PX  = 8   # 境界クリアランス（ピクセル数、約0.27mm/辺
 CODES = ['08', '09', '10', '11', '12', '13', '14']
 
 # ── 彫刻設定 ──────────────────────────────────────────────────────────────
-ENGRAVE_DEPTH   = 0.4   # 彫り深さ (mm)
-ENGRAVE_TEXT_MM = 5.0   # テキスト行高さ (mm)
+ENGRAVE_DEPTH   = 1.5   # 彫り深さ (mm)  0.2mm 積層なら 7〜8 層分
+ENGRAVE_TEXT_MM = 7.0   # テキスト行高さ (mm)
 
 PREFECTURE_INFO = {
     '08': ('08', '茨城県', '水戸市'),
@@ -129,11 +129,67 @@ def fetch_dem_grid(bbox, dem_dir):
 def compute_bbox(geometry, code):
     return PUZZLE_BBOXES[code]
 
+# ── ポリゴン面積（Shoelace法、度²） ───────────────────────────────────────
+def ring_area(ring):
+    n = len(ring)
+    a = 0.0
+    for i in range(n):
+        j = (i + 1) % n
+        a += ring[i][0] * ring[j][1] - ring[j][0] * ring[i][1]
+    return abs(a) / 2.0
+
+# ── 孤立ポリゴン検出（座標共有グラフ） ──────────────────────────────────
+def find_main_component(candidates, coord_decimals=5):
+    """外周の座標点を共有するポリゴンを隣接とみなして連結成分を構築し、
+    面積合計が最大の連結成分（本土）に属するインデックス集合を返す。
+    本土の市区町村ポリゴンは正確に共通の境界座標を持つが、
+    海上の島ポリゴンは本土と共通座標を持たないため孤立成分になる。
+    coord_decimals: 座標丸め桁数（10^-5 度 ≈ 1m）"""
+    from collections import defaultdict
+    n = len(candidates)
+    if n == 0:
+        return set()
+
+    # 座標点 → ポリゴンインデックスのマッピング
+    coord_to_polys = defaultdict(list)
+    for i, (_, rings) in enumerate(candidates):
+        for pt in rings[0]:  # 外周のみ
+            key = (round(pt[0], coord_decimals), round(pt[1], coord_decimals))
+            coord_to_polys[key].append(i)
+
+    # Union-Find
+    parent = list(range(n))
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    def union(x, y):
+        px, py = find(x), find(y)
+        if px != py:
+            parent[px] = py
+
+    # 同じ座標を持つポリゴン同士を結合
+    for polys in coord_to_polys.values():
+        if len(polys) > 1:
+            first = polys[0]
+            for other in polys[1:]:
+                union(first, other)
+
+    # 各連結成分の面積合計
+    comp_area = defaultdict(float)
+    for i, (area, _) in enumerate(candidates):
+        comp_area[find(i)] += area
+
+    # 最大面積の連結成分（本土）を選択
+    main_root = max(comp_area, key=comp_area.__getitem__)
+    return {i for i in range(n) if find(i) == main_root}
+
 # ── ポリゴン抽出 ──────────────────────────────────────────────────────────
 def feature_to_polygons(feature, code):
     geom = feature['geometry']
     b = PUZZLE_BBOXES[code]
-    polygons = []
+    candidates = []
     def add_poly(coords):
         rings = [[(p[0], p[1]) for p in ring] for ring in coords]
         outer = rings[0]
@@ -141,12 +197,18 @@ def feature_to_polygons(feature, code):
         cy = sum(p[1] for p in outer) / len(outer)
         if cx < b['minLon'] or cx > b['maxLon'] or cy < b['minLat'] or cy > b['maxLat']:
             return
-        polygons.append(rings)
+        candidates.append((ring_area(outer), rings))
     if geom['type'] == 'Polygon':
         add_poly(geom['coordinates'])
     elif geom['type'] == 'MultiPolygon':
         for poly in geom['coordinates']: add_poly(poly)
-    return polygons
+    if not candidates:
+        return []
+    main_idx = find_main_component(candidates)
+    excluded = len(candidates) - len(main_idx)
+    if excluded:
+        print(f'  飛び地/島を除外: {excluded} ポリゴン（本土連結成分外）')
+    return [rings for i, (_, rings) in enumerate(candidates) if i in main_idx]
 
 # ── スキャンラインクリッピング ─────────────────────────────────────────────
 def clip_dem(bbox, values, polygons):
@@ -210,19 +272,22 @@ def find_jp_font():
             return p
     return None
 
-def make_text_mask(values, text_lines, font_path, px_per_mm):
-    """底面中央にテキストマスクを生成する（裏面から読めるよう左右ミラー）。"""
+def make_text_mask(values, text_lines, font_path, px_per_mm, font_size_mm=ENGRAVE_TEXT_MM):
+    """底面中央にテキストマスクを生成する（裏面から読めるよう左右ミラー）。
+    戻り値: (mask, pre_clip_count)
+      pre_clip_count: グリッド範囲内に収まったテキストピクセル数（valid クリップ前）。
+      mask.sum() == pre_clip_count のとき、テキスト全体が有効エリアに収まっている。"""
     from PIL import Image, ImageDraw, ImageFont
     rows, cols = values.shape
     valid = ~np.isnan(values)
     if not valid.any() or font_path is None:
-        return np.zeros((rows, cols), dtype=bool)
-    font_size = max(8, int(ENGRAVE_TEXT_MM * px_per_mm))
+        return np.zeros((rows, cols), dtype=bool), 0
+    font_size = max(8, int(font_size_mm * px_per_mm))
     try:
         font = ImageFont.truetype(font_path, font_size)
     except Exception:
         print('  警告: フォント読み込み失敗。テキスト彫刻スキップ。')
-        return np.zeros((rows, cols), dtype=bool)
+        return np.zeros((rows, cols), dtype=bool), 0
     dummy = ImageDraw.Draw(Image.new('L', (1, 1)))
     line_boxes = [dummy.textbbox((0, 0), l, font=font) for l in text_lines]
     pad = font_size // 4
@@ -245,9 +310,43 @@ def make_text_mask(values, text_lines, font_path, px_per_mm):
     mask = np.zeros((rows, cols), dtype=bool)
     r_s = max(0, r0); r_e = min(rows, r0 + img_h2)
     c_s = max(0, c0); c_e = min(cols, c0 + img_w2)
-    mask[r_s:r_e, c_s:c_e] = img_arr[r_s-r0:r_e-r0, c_s-c0:c_e-c0]
+    placed = img_arr[r_s - r0:r_e - r0, c_s - c0:c_e - c0]
+    mask[r_s:r_e, c_s:c_e] = placed
+    pre_clip_count = int(placed.sum())  # グリッド内に置けたテキストピクセル数
     mask &= valid
-    return mask
+    return mask, pre_clip_count
+
+
+def fit_text_mask(values, text_lines, font_path, px_per_mm,
+                  max_mm=ENGRAVE_TEXT_MM, min_mm=3.0, steps=8):
+    """有効エリアに完全に収まる最大フォントサイズを二分探索して返す。"""
+    lo, hi = min_mm, max_mm
+    best_mask = None
+    best_mm = min_mm
+    for _ in range(steps):
+        mid = (lo + hi) / 2
+        mask, pre = make_text_mask(values, text_lines, font_path, px_per_mm, mid)
+        if pre > 0 and int(mask.sum()) == pre:  # 完全に収まる
+            best_mask, best_mm = mask, mid
+            lo = mid
+        else:
+            hi = mid
+    if best_mask is None:  # 最小サイズでも収まらない場合はそのまま返す
+        best_mask, _ = make_text_mask(values, text_lines, font_path, px_per_mm, min_mm)
+        best_mm = min_mm
+    return best_mask, best_mm
+
+# ── テキストマスクのブロック最大プーリング ────────────────────────────────
+def pool_mask(mask, dec):
+    """全解像度マスクを dec×dec ブロック単位で OR プーリングして縮小する。
+    返り値の shape: (ceil(rows/dec), ceil(cols/dec))"""
+    rows, cols = mask.shape
+    hpad = (-rows) % dec
+    wpad = (-cols) % dec
+    if hpad or wpad:
+        mask = np.pad(mask, ((0, hpad), (0, wpad)))
+    h2, w2 = mask.shape
+    return mask.reshape(h2 // dec, dec, w2 // dec, dec).any(axis=(1, 3))
 
 # ── ワールド座標グリッド ───────────────────────────────────────────────────
 def world_grid(bbox, values):
@@ -387,7 +486,8 @@ def build_bottom(bbox, values, base_z, dec, text_mask=None):
     R=R[m]; C=C[m]; R2=R2[m]; C2=C2[m]
 
     if text_mask is not None:
-        bz_cell = np.where(text_mask[R, C], bz_txt, bz_bg).astype(np.float32)
+        # text_mask はプーリング済み（行/列インデックスは R//dec, C//dec）
+        bz_cell = np.where(text_mask[R // dec, C // dec], bz_txt, bz_bg).astype(np.float32)
     else:
         bz_cell = np.full(len(R), bz_bg, dtype=np.float32)
 
@@ -413,13 +513,17 @@ def build_text_walls(bbox, values, base_z, dec, text_mask):
     R2 = np.minimum(R + dec, rows-1)
     C2 = np.minimum(C + dec, cols-1)
     valid    = ~np.isnan(values[R, C])
-    is_text  = text_mask[R, C]
+    tm_rows, tm_cols = text_mask.shape  # プーリング済みサイズ
+    is_text  = text_mask[R // dec, C // dec]
 
     def nbr_non_text(dr, dc):
         nr = R + dr; nc = C + dc
         oob = (nr < 0) | (nr >= rows) | (nc < 0) | (nc >= cols)
         nr_s = np.clip(nr, 0, rows-1); nc_s = np.clip(nc, 0, cols-1)
-        return valid & is_text & ~oob & ~text_mask[nr_s, nc_s] & ~np.isnan(values[nr_s, nc_s])
+        # プーリング済みマスクでの隣接ブロックインデックス
+        nr_p = np.clip(nr_s // dec, 0, tm_rows - 1)
+        nc_p = np.clip(nc_s // dec, 0, tm_cols - 1)
+        return valid & is_text & ~oob & ~text_mask[nr_p, nc_p] & ~np.isnan(values[nr_s, nc_s])
 
     bz_fn = lambda n: np.full(n, bz_txt, dtype=np.float32)
     parts = []
@@ -480,8 +584,15 @@ def gen_one(code, base_dir, dec):
     grid_pixel_mm  = grid_pixel_lon * COS_CENTER * METERS_PER_DEGREE * XY_SCALE
     px_per_mm = 1.0 / grid_pixel_mm
     jp_font   = find_jp_font()
-    text_mask = make_text_mask(clipped, [code_str, pref_name, capital], jp_font, px_per_mm)
-    print(f'  テキストピクセル: {text_mask.sum():,}')
+    mask_1line, mm_1line = fit_text_mask(clipped, [f'{code_str} {pref_name}'], jp_font, px_per_mm)
+    mask_2line, mm_2line = fit_text_mask(clipped, [code_str, pref_name],         jp_font, px_per_mm)
+    if mm_1line >= mm_2line:
+        text_mask, used_mm, layout = mask_1line, mm_1line, '1行'
+    else:
+        text_mask, used_mm, layout = mask_2line, mm_2line, '2行'
+    print(f'  テキスト: {layout} {used_mm:.1f} mm  ピクセル: {text_mask.sum():,}')
+    text_mask_pooled = pool_mask(text_mask, dec)
+    print(f'  プーリング後テキストブロック: {text_mask_pooled.sum():,}')
 
     print('  地形メッシュ生成...')
     terrain_tris, base_z = build_terrain(grid_bbox, clipped, dec)
@@ -492,11 +603,11 @@ def gen_one(code, base_dir, dec):
     print(f'  壁 tri: {len(wall_tris):,}')
 
     print('  底面メッシュ生成...')
-    bot_tris = build_bottom(grid_bbox, clipped, base_z, dec, text_mask)
+    bot_tris = build_bottom(grid_bbox, clipped, base_z, dec, text_mask_pooled)
     print(f'  底面 tri: {len(bot_tris):,}')
 
     print('  テキスト壁生成...')
-    txt_wall_tris = build_text_walls(grid_bbox, clipped, base_z, dec, text_mask)
+    txt_wall_tris = build_text_walls(grid_bbox, clipped, base_z, dec, text_mask_pooled)
     print(f'  テキスト壁 tri: {len(txt_wall_tris):,}')
 
     os.makedirs(out_dir, exist_ok=True)

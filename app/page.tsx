@@ -103,9 +103,16 @@ export default function HomePage() {
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 flex-shrink-0">
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setPreview(null)}
+                className="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-1"
+                aria-label="トップへ戻る"
+              >
+                ← トップへ
+              </button>
               <span className="w-1 h-5 rounded-full flex-shrink-0" style={{ background: preview.color }} />
               <span className="font-semibold">{preview.name}</span>
-              <span className="text-gray-500 text-xs">ドラッグで回転 / スクロールでズーム</span>
+              <span className="text-gray-500 text-xs hidden sm:inline">ドラッグで回転 / スクロールでズーム</span>
             </div>
             <button
               onClick={() => setPreview(null)}
