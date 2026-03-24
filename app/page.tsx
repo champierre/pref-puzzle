@@ -5,6 +5,7 @@ import { KANTO_PREFECTURES, BASE_PATH } from '../lib/constants/kanto';
 import { HOKKAIDO_PREFECTURES } from '../lib/constants/hokkaido';
 import { CHUGOKU_PREFECTURES } from '../lib/constants/chugoku';
 import { CHUBU_PREFECTURES } from '../lib/constants/chubu';
+import { KINKI_PREFECTURES } from '../lib/constants/kinki';
 
 const StlViewer = dynamic(() => import('./components/StlViewer'), { ssr: false });
 
@@ -14,6 +15,7 @@ const FILE_SIZES: Record<string, string> = {
   '11': '46.9 MB', '12': '62.1 MB', '13': '21.3 MB', '14': '28.7 MB',
   '15': '143.4 MB', '16': '50.5 MB', '17': '50.7 MB', '18': '50.1 MB', '19': '52.4 MB', '20': '144.3 MB',
   '21': '131.0 MB', '22': '93.4 MB', '23': '61.5 MB',
+  '24': '66.8 MB', '25': '47.8 MB', '26': '50.7 MB', '27': '21.7 MB', '28': '93.3 MB', '29': '43.7 MB', '30': '54.1 MB',
   '31': '42.2 MB', '32': '75.7 MB', '33': '84.4 MB', '34': '95.9 MB', '35': '68.1 MB',
 };
 
@@ -21,6 +23,7 @@ const GROUPS = [
   { label: '北海道', prefectures: HOKKAIDO_PREFECTURES },
   { label: '関東地方', prefectures: KANTO_PREFECTURES },
   { label: '中部地方', prefectures: CHUBU_PREFECTURES },
+  { label: '近畿地方', prefectures: KINKI_PREFECTURES },
   { label: '中国地方', prefectures: CHUGOKU_PREFECTURES },
 ];
 
