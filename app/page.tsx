@@ -2,13 +2,20 @@
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { KANTO_PREFECTURES, BASE_PATH } from '../lib/constants/kanto';
+import { HOKKAIDO_PREFECTURES } from '../lib/constants/hokkaido';
 
 const StlViewer = dynamic(() => import('./components/StlViewer'), { ssr: false });
 
 const FILE_SIZES: Record<string, string> = {
-  '08': '75.7 MB', '09': '80.8 MB', '10': '79.7 MB',
-  '11': '47.0 MB', '12': '62.2 MB', '13': '21.5 MB', '14': '28.8 MB',
+  '01d': '1.5 MB', '01c': '5.4 MB', '01n': '4.7 MB', '01e': '7.6 MB',
+  '08': '75.7 MB', '09': '80.8 MB', '10': '79.6 MB',
+  '11': '46.9 MB', '12': '62.1 MB', '13': '21.3 MB', '14': '28.7 MB',
 };
+
+const GROUPS = [
+  { label: '北海道', prefectures: HOKKAIDO_PREFECTURES },
+  { label: '関東地方', prefectures: KANTO_PREFECTURES },
+];
 
 export default function HomePage() {
   const [zipping, setZipping] = useState(false);
@@ -19,7 +26,8 @@ export default function HomePage() {
     try {
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
-      await Promise.all(KANTO_PREFECTURES.map(async (p) => {
+      const allPrefs = GROUPS.flatMap(g => g.prefectures);
+      await Promise.all(allPrefs.map(async (p) => {
         const resp = await fetch(`${BASE_PATH}/data/stl/${p.code}.stl`);
         if (resp.ok) zip.file(`${p.code}_${p.nameEn}.stl`, await resp.arrayBuffer());
       }));
@@ -43,44 +51,51 @@ export default function HomePage() {
       <div className="max-w-xl mx-auto px-4 py-12 flex flex-col gap-10">
 
         <header className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">関東 3D 都県パズル</h1>
+          <h1 className="text-3xl font-bold tracking-tight">3D 都道府県パズル</h1>
           <p className="text-gray-400 leading-relaxed">
-            関東7都県の地形を 3D プリントできるパズルです。<br />
+            都道府県の地形を 3D プリントできるパズルです。<br />
             国土地理院の標高データから生成した STL ファイルを配布しています。
           </p>
         </header>
 
-        <ul className="flex flex-col divide-y divide-gray-800">
-          {KANTO_PREFECTURES.map((p) => (
-            <li key={p.code} className="flex items-center justify-between py-4 gap-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="w-1 h-8 rounded-full flex-shrink-0" style={{ background: p.color }} />
-                <div>
-                  <span className="font-semibold">{p.name}</span>
-                  <span className="ml-2 text-gray-500 text-sm">{p.nameEn}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 flex-shrink-0">
-                <button
-                  onClick={() => setPreview({ code: p.code, name: p.name, color: p.color })}
-                  className="text-sm text-gray-500 hover:text-gray-200 transition-colors"
-                >
-                  プレビュー
-                </button>
-                <div className="flex flex-col items-end gap-0.5">
-                  <a
-                    href={`${BASE_PATH}/data/stl/${p.code}.stl`}
-                    download={`${p.code}_${p.nameEn}.stl`}
-                    className="bg-blue-600 hover:bg-blue-500 transition-colors px-3 py-1.5 rounded text-sm font-medium"
-                  >
-                    ダウンロード
-                  </a>
-                  <span className="text-gray-600 text-xs">{FILE_SIZES[p.code]}</span>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+        {GROUPS.map((group) => (
+          <section key={group.label} className="flex flex-col gap-2">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest border-b border-gray-800 pb-2">
+              {group.label}
+            </h2>
+            <ul className="flex flex-col divide-y divide-gray-800">
+              {group.prefectures.map((p) => (
+                <li key={p.code} className="flex items-center justify-between py-4 gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-1 h-8 rounded-full flex-shrink-0" style={{ background: p.color }} />
+                    <div>
+                      <span className="font-semibold">{p.name}</span>
+                      <span className="ml-2 text-gray-500 text-sm">{p.nameEn}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    <button
+                      onClick={() => setPreview({ code: p.code, name: p.name, color: p.color })}
+                      className="text-sm text-gray-500 hover:text-gray-200 transition-colors"
+                    >
+                      プレビュー
+                    </button>
+                    <div className="flex flex-col items-end gap-0.5">
+                      <a
+                        href={`${BASE_PATH}/data/stl/${p.code}.stl`}
+                        download={`${p.code}_${p.nameEn}.stl`}
+                        className="bg-blue-600 hover:bg-blue-500 transition-colors px-3 py-1.5 rounded text-sm font-medium"
+                      >
+                        ダウンロード
+                      </a>
+                      <span className="text-gray-600 text-xs">{FILE_SIZES[p.code]}</span>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
 
         <button
           onClick={downloadZip}

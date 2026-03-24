@@ -24,6 +24,10 @@ COS_CENTER = math.cos(PROJ_CENTER_LAT * math.pi / 180)
 TILE_SIZE = 256
 DEM_TILE_URL = 'https://cyberjapandata.gsi.go.jp/xyz/dem/{z}/{x}/{y}.txt'
 PUZZLE_BBOXES = {
+    '01d': dict(minLon=139.20, maxLon=141.40, minLat=41.20, maxLat=42.90),  # 道南
+    '01c': dict(minLon=139.60, maxLon=143.60, minLat=41.70, maxLat=44.30),  # 道央
+    '01n': dict(minLon=140.70, maxLon=143.40, minLat=42.60, maxLat=45.60),  # 道北
+    '01e': dict(minLon=142.30, maxLon=146.20, minLat=41.90, maxLat=44.70),  # 道東（本土）
     '08': dict(minLon=139.50, maxLon=141.00, minLat=35.60, maxLat=37.00),  # 茨城
     '09': dict(minLon=139.20, maxLon=140.40, minLat=36.10, maxLat=37.20),  # 栃木
     '10': dict(minLon=138.30, maxLon=139.80, minLat=35.90, maxLat=37.10),  # 群馬
@@ -41,13 +45,27 @@ BASE_THICK    = 3.0
 DECIMATION    = 4   # 1 にすると ~200MB/県
 CLEARANCE_PX  = 8   # 境界クリアランス（ピクセル数、約0.27mm/辺）
 
-CODES = ['08', '09', '10', '11', '12', '13', '14']
+CODES = ['01d', '01c', '01n', '01e', '08', '09', '10', '11', '12', '13', '14']
+
+# 都道府県固有のパラメータ（グローバルデフォルトからの上書き）
+PREFECTURE_PARAMS = {
+    # 北海道4地方: 大面積のため zoom=11 / dec=16 / 1/4 スケール
+    # coord_decimals=4: N03座標精度の違いによる連結失敗を防ぐ（10m許容）
+    '01d': dict(zoom=11, decimation=16, coord_decimals=4),
+    '01c': dict(zoom=11, decimation=16, coord_decimals=4),
+    '01n': dict(zoom=11, decimation=16, coord_decimals=4),
+    '01e': dict(zoom=11, decimation=16, coord_decimals=4),
+}
 
 # ── 彫刻設定 ──────────────────────────────────────────────────────────────
 ENGRAVE_DEPTH   = 1.5   # 彫り深さ (mm)  0.2mm 積層なら 7〜8 層分
 ENGRAVE_TEXT_MM = 7.0   # テキスト行高さ (mm)
 
 PREFECTURE_INFO = {
+    '01d': ('01d', '道南', '函館市'),
+    '01c': ('01c', '道央', '札幌市'),
+    '01n': ('01n', '道北', '旭川市'),
+    '01e': ('01e', '道東', '帯広市'),
     '08': ('08', '茨城県', '水戸市'),
     '09': ('09', '栃木県', '宇都宮市'),
     '10': ('10', '群馬県', '前橋市'),
@@ -95,11 +113,12 @@ def load_tile(z, x, y, dem_dir):
         return np.full(TILE_SIZE * TILE_SIZE, np.nan, dtype=np.float32)
 
 # ── DEM グリッド取得 ───────────────────────────────────────────────────────
-def fetch_dem_grid(bbox, dem_dir):
-    xm = lon_to_tile_x(bbox['minLon'], ZOOM)
-    xM = lon_to_tile_x(bbox['maxLon'], ZOOM)
-    ym = lat_to_tile_y(bbox['maxLat'], ZOOM)
-    yM = lat_to_tile_y(bbox['minLat'], ZOOM)
+def fetch_dem_grid(bbox, dem_dir, zoom=None):
+    z = zoom if zoom is not None else ZOOM
+    xm = lon_to_tile_x(bbox['minLon'], z)
+    xM = lon_to_tile_x(bbox['maxLon'], z)
+    ym = lat_to_tile_y(bbox['maxLat'], z)
+    yM = lat_to_tile_y(bbox['minLat'], z)
     nX, nY = xM - xm + 1, yM - ym + 1
     cols, rows = nX * TILE_SIZE, nY * TILE_SIZE
     values = np.full((rows, cols), np.nan, dtype=np.float32)
@@ -108,7 +127,7 @@ def fetch_dem_grid(bbox, dem_dir):
     total = len(tasks)
     done = [0]
     def _load(tx, ty):
-        tile = load_tile(ZOOM, tx, ty, dem_dir).reshape(TILE_SIZE, TILE_SIZE)
+        tile = load_tile(z, tx, ty, dem_dir).reshape(TILE_SIZE, TILE_SIZE)
         ox, oy = (tx - xm) * TILE_SIZE, (ty - ym) * TILE_SIZE
         return tx, ty, tile, ox, oy
     with ThreadPoolExecutor(max_workers=8) as ex:
@@ -120,8 +139,8 @@ def fetch_dem_grid(bbox, dem_dir):
             print(f'\r  tiles {done[0]}/{total}', end='', flush=True)
     print()
 
-    nw_lon, nw_lat = tile_to_nw(xm, ym, ZOOM)
-    se_lon, se_lat = tile_to_nw(xM+1, yM+1, ZOOM)
+    nw_lon, nw_lat = tile_to_nw(xm, ym, z)
+    se_lon, se_lat = tile_to_nw(xM+1, yM+1, z)
     bbox_out = dict(minLon=nw_lon, maxLon=se_lon, minLat=se_lat, maxLat=nw_lat)
     return bbox_out, values
 
@@ -204,38 +223,38 @@ def feature_to_polygons(feature, code):
         for poly in geom['coordinates']: add_poly(poly)
     if not candidates:
         return []
-    main_idx = find_main_component(candidates)
+    coord_dec = PREFECTURE_PARAMS.get(code, {}).get('coord_decimals', 5)
+    main_idx = find_main_component(candidates, coord_decimals=coord_dec)
     excluded = len(candidates) - len(main_idx)
     if excluded:
         print(f'  飛び地/島を除外: {excluded} ポリゴン（本土連結成分外）')
     return [rings for i, (_, rings) in enumerate(candidates) if i in main_idx]
 
-# ── スキャンラインクリッピング ─────────────────────────────────────────────
+# ── ポリゴン塗りつぶしクリッピング（PIL使用） ──────────────────────────────
 def clip_dem(bbox, values, polygons):
+    """ポリゴンのOR合算マスクで DEM をクリッピング。
+    N03 データは行政階層レベルの重複ポリゴンを含むため、
+    スキャンライン偶奇ルールではなく PIL の個別描画（OR 合算）で合成する。"""
+    from PIL import Image, ImageDraw
     rows, cols = values.shape
     lon_step = (bbox['maxLon'] - bbox['minLon']) / cols
     lat_step = (bbox['maxLat'] - bbox['minLat']) / rows
-    clipped = np.full_like(values, np.nan)
-    all_rings = [np.array(ring) for poly in polygons for ring in poly]
 
-    for r in range(rows):
-        lat = bbox['maxLat'] - (r + 0.5) * lat_step
-        xs = []
-        for ring in all_rings:
-            lons_r = ring[:, 0]; lats_r = ring[:, 1]
-            yi = lats_r; yj = np.roll(lats_r, 1)
-            xi = lons_r; xj = np.roll(lons_r, 1)
-            mask = (yi > lat) != (yj > lat)
-            if mask.any():
-                denom = yj[mask] - yi[mask]
-                x_int = xi[mask] + (lat - yi[mask]) * (xj[mask] - xi[mask]) / denom
-                xs.extend(x_int.tolist())
-        xs.sort()
-        for k in range(0, len(xs) - 1, 2):
-            c0 = max(0, math.ceil((xs[k]   - bbox['minLon']) / lon_step - 0.5))
-            c1 = min(cols-1, math.floor((xs[k+1] - bbox['minLon']) / lon_step - 0.5))
-            if c0 <= c1:
-                clipped[r, c0:c1+1] = values[r, c0:c1+1]
+    mask_img = Image.new('L', (cols, rows), 0)
+    draw = ImageDraw.Draw(mask_img)
+
+    for poly in polygons:
+        outer = poly[0]  # 外周リングのみ使用
+        pixels = [
+            ((p[0] - bbox['minLon']) / lon_step,
+             (bbox['maxLat'] - p[1]) / lat_step)
+            for p in outer
+        ]
+        if len(pixels) >= 3:
+            draw.polygon(pixels, fill=255)
+
+    mask = np.array(mask_img) > 0
+    clipped = np.where(mask, values, np.nan)
     return clipped
 
 # ── 境界クリアランス ──────────────────────────────────────────────────────
@@ -348,6 +367,9 @@ def pool_mask(mask, dec):
     h2, w2 = mask.shape
     return mask.reshape(h2 // dec, dec, w2 // dec, dec).any(axis=(1, 3))
 
+# 都道府県ごとの XY スケール（gen_one で上書き可能）
+_CUR_XY_SCALE = XY_SCALE
+
 # ── ワールド座標グリッド ───────────────────────────────────────────────────
 def world_grid(bbox, values):
     rows, cols = values.shape
@@ -358,9 +380,10 @@ def world_grid(bbox, values):
     lons = bbox['minLon'] + (c_idx + 0.5) * lon_step
     lats = bbox['maxLat'] - (r_idx + 0.5) * lat_step
     lons2d, lats2d = np.meshgrid(lons, lats)
-    wx = ((lons2d - PROJ_CENTER_LON) * COS_CENTER * METERS_PER_DEGREE * XY_SCALE).astype(np.float32)
-    wy = ((lats2d - PROJ_CENTER_LAT) * METERS_PER_DEGREE * XY_SCALE).astype(np.float32)
-    wz = np.where(np.isnan(values), np.nan, (values * Z_SCALE * XY_SCALE).astype(np.float32))
+    s = _CUR_XY_SCALE
+    wx = ((lons2d - PROJ_CENTER_LON) * COS_CENTER * METERS_PER_DEGREE * s).astype(np.float32)
+    wy = ((lats2d - PROJ_CENTER_LAT) * METERS_PER_DEGREE * s).astype(np.float32)
+    wz = np.where(np.isnan(values), np.nan, (values * Z_SCALE * s).astype(np.float32))
     return wx, wy, wz
 
 # ── STL 型 ────────────────────────────────────────────────────────────────
@@ -564,6 +587,13 @@ def write_stl(path, tri_arrays):
 
 # ── メイン ────────────────────────────────────────────────────────────────
 def gen_one(code, base_dir, dec):
+    global _CUR_XY_SCALE
+    # 都道府県固有パラメータの適用
+    pref_params = PREFECTURE_PARAMS.get(code, {})
+    _CUR_XY_SCALE = pref_params.get('xy_scale', XY_SCALE)
+    pref_zoom = pref_params.get('zoom', None)
+    dec = pref_params.get('decimation', dec)
+
     boundary_path = os.path.join(base_dir, 'public', 'data', 'boundary', f'{code}.json')
     dem_dir       = os.path.join(base_dir, 'public', 'data', 'dem')
     out_dir       = os.path.join(base_dir, 'public', 'data', 'stl')
@@ -577,7 +607,7 @@ def gen_one(code, base_dir, dec):
     print(f'  bbox: lon {bbox["minLon"]:.3f}–{bbox["maxLon"]:.3f}  lat {bbox["minLat"]:.3f}–{bbox["maxLat"]:.3f}')
 
     print('  DEM 読み込み中...')
-    grid_bbox, values = fetch_dem_grid(bbox, dem_dir)
+    grid_bbox, values = fetch_dem_grid(bbox, dem_dir, zoom=pref_zoom)
     print(f'  グリッド: {values.shape[0]}×{values.shape[1]}')
 
     print('  クリッピング中...')

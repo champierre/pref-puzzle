@@ -5,7 +5,34 @@ import * as http from 'http';
 import JSZip from 'jszip';
 import { XMLParser } from 'fast-xml-parser';
 
-const CODES = ['08', '09', '10', '11', '12', '13', '14'];
+// 北海道は4地方に分割。全都道府県コードの代わりに地方コードを使用。
+const CODES = ['01d', '01c', '01n', '01e', '08', '09', '10', '11', '12', '13', '14'];
+
+const PREF_NAMES: Record<string, string> = {
+  '08': '茨城県', '09': '栃木県', '10': '群馬県', '11': '埼玉県',
+  '12': '千葉県', '13': '東京都', '14': '神奈川県',
+};
+
+// 北海道4地方の定義（N03_002 振興局名でフィルタ）
+const HOKKAIDO_REGIONS: Record<string, { name: string; subprefs: Set<string> }> = {
+  '01d': {
+    name: '道南',
+    subprefs: new Set(['渡島総合振興局', '檜山振興局']),
+  },
+  '01c': {
+    name: '道央',
+    subprefs: new Set(['石狩振興局', '後志総合振興局', '空知総合振興局', '胆振総合振興局', '日高振興局']),
+  },
+  '01n': {
+    name: '道北',
+    subprefs: new Set(['上川総合振興局', '留萌振興局', '宗谷総合振興局']),
+  },
+  '01e': {
+    name: '道東',
+    subprefs: new Set(['オホーツク総合振興局', '十勝総合振興局', '釧路総合振興局', '根室振興局']),
+  },
+};
+
 const OUT_DIR = path.join(process.cwd(), 'public', 'data', 'boundary');
 
 // N03 ZIP URL pattern (update year as needed)
@@ -51,7 +78,6 @@ function extractPolygons(xml: unknown): Polygon[] {
     if (!obj || typeof obj !== 'object') return;
     if (Array.isArray(obj)) { obj.forEach(walk); return; }
     const rec = obj as Record<string, unknown>;
-    // Look for gml:LinearRing/gml:posList pattern
     const keys = Object.keys(rec);
     for (const k of keys) {
       if (k.includes('posList')) {
@@ -70,6 +96,28 @@ function extractPolygons(xml: unknown): Polygon[] {
   return polygons;
 }
 
+/** ksj:subprefectureName の出現順リストを抽出する（ポリゴンと同数・同順のはず）。
+ * N03-2024 形式では gml:Surface（geometry）と ksj:AdministrativeBoundary（属性）が
+ * 別配列として同インデックスで対応している。 */
+function extractSubprefNames(xml: unknown): string[] {
+  const names: string[] = [];
+  function walk(obj: unknown): void {
+    if (!obj || typeof obj !== 'object') return;
+    if (Array.isArray(obj)) { obj.forEach(walk); return; }
+    const rec = obj as Record<string, unknown>;
+    for (const k of Object.keys(rec)) {
+      if (k === 'ksj:subprefectureName') {
+        const val = rec[k];
+        if (typeof val === 'string') names.push(val);
+      } else {
+        walk(rec[k]);
+      }
+    }
+  }
+  walk(xml);
+  return names;
+}
+
 async function fetchBoundary(code: string): Promise<void> {
   const outFile = path.join(OUT_DIR, `${code}.json`);
   if (fs.existsSync(outFile)) {
@@ -77,8 +125,9 @@ async function fetchBoundary(code: string): Promise<void> {
     return;
   }
 
-  console.log(`  Downloading N03 for ${code}...`);
-  const buf = await download(N03_URL(code));
+  const prefCode = code.slice(0, 2);  // '01d' → '01', '08' → '08'
+  console.log(`  Downloading N03 for ${prefCode}...`);
+  const buf = await download(N03_URL(prefCode));
   const zip = await JSZip.loadAsync(buf);
 
   const xmlFiles = Object.keys(zip.files).filter(f => f.endsWith('.xml') || f.endsWith('.XML'));
@@ -94,7 +143,7 @@ async function fetchBoundary(code: string): Promise<void> {
 
   const feature = {
     type: 'Feature',
-    properties: { code, N03_001: ['茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県'][parseInt(code) - 8] },
+    properties: { code, N03_001: PREF_NAMES[code] ?? code },
     geometry: {
       type: 'MultiPolygon',
       coordinates: allPolygons.map(p => p.coordinates),
@@ -105,10 +154,87 @@ async function fetchBoundary(code: string): Promise<void> {
   console.log(`  Written ${code}.json (${allPolygons.length} polygons)`);
 }
 
+/** 北海道4地方の境界ファイルをまとめて生成する。N03_01 を1回だけDLする。
+ * N03-2024 形式: gml:Surface（geometry）と ksj:AdministrativeBoundary（属性）が
+ * 同インデックス対応。市区町村レベルファイルのみを対象にする。 */
+async function fetchHokkaidoRegions(): Promise<void> {
+  const regionCodes = Object.keys(HOKKAIDO_REGIONS);
+  const allExist = regionCodes.every(c => fs.existsSync(path.join(OUT_DIR, `${c}.json`)));
+  if (allExist) {
+    console.log('  北海道地方ファイルはすべて存在します。スキップ。');
+    return;
+  }
+
+  console.log('  Downloading N03 for 01 (北海道)...');
+  const buf = await download(N03_URL('01'));
+  const zip = await JSZip.loadAsync(buf);
+
+  // 市区町村レベルのファイルのみ処理（subprefecture ファイルは除外）
+  const muniFile = Object.keys(zip.files).find(
+    f => /N03-\d+_\d+\.xml$/i.test(f) && !f.includes('subprefecture') && !f.startsWith('KS-')
+  );
+  if (!muniFile) throw new Error('Municipality XML file not found in ZIP');
+  console.log(`  Processing ${muniFile}...`);
+
+  const xmlStr = await zip.files[muniFile].async('string');
+  const parsed = parser.parse(xmlStr);
+
+  const polygons = extractPolygons(parsed);
+  const subprefNames = extractSubprefNames(parsed);
+  console.log(`  Polygons: ${polygons.length}, subpref names: ${subprefNames.length}`);
+  if (polygons.length !== subprefNames.length) {
+    throw new Error(`Count mismatch: ${polygons.length} polygons vs ${subprefNames.length} subprefs`);
+  }
+
+  // 地方コードごとにポリゴンを振り分け
+  const regionPolygons: Record<string, Polygon[]> = {};
+  for (const rc of regionCodes) regionPolygons[rc] = [];
+  const unknownSubprefs = new Set<string>();
+
+  for (let i = 0; i < polygons.length; i++) {
+    const subpref = subprefNames[i];
+    let matched = false;
+    for (const [rc, def] of Object.entries(HOKKAIDO_REGIONS)) {
+      if (def.subprefs.has(subpref)) {
+        regionPolygons[rc].push(polygons[i]);
+        matched = true;
+        break;
+      }
+    }
+    if (!matched && subpref) unknownSubprefs.add(subpref);
+  }
+
+  if (unknownSubprefs.size > 0) {
+    console.log('  未分類の振興局名:', [...unknownSubprefs].join(', '));
+  }
+
+  for (const [rc, polys] of Object.entries(regionPolygons)) {
+    const outFile = path.join(OUT_DIR, `${rc}.json`);
+    if (fs.existsSync(outFile)) { console.log(`  ${rc}.json already exists, skipping`); continue; }
+    const feature = {
+      type: 'Feature',
+      properties: { code: rc, name: HOKKAIDO_REGIONS[rc].name },
+      geometry: { type: 'MultiPolygon', coordinates: polys.map(p => p.coordinates) },
+    };
+    fs.writeFileSync(outFile, JSON.stringify(feature));
+    console.log(`  Written ${rc}.json (${polys.length} polygons)`);
+  }
+}
+
 async function main() {
   fs.mkdirSync(OUT_DIR, { recursive: true });
   console.log('Fetching boundary data...');
-  for (const code of CODES) {
+
+  // 北海道4地方をまとめて処理
+  try {
+    await fetchHokkaidoRegions();
+  } catch (e) {
+    console.error('  ERROR for Hokkaido regions:', e);
+    process.exit(1);
+  }
+
+  // その他の都県
+  for (const code of CODES.filter(c => !c.startsWith('01'))) {
     try {
       await fetchBoundary(code);
     } catch (e) {
