@@ -6,6 +6,7 @@ import { HOKKAIDO_PREFECTURES } from '../lib/constants/hokkaido';
 import { CHUGOKU_PREFECTURES } from '../lib/constants/chugoku';
 import { CHUBU_PREFECTURES } from '../lib/constants/chubu';
 import { KINKI_PREFECTURES } from '../lib/constants/kinki';
+import { SHIKOKU_PREFECTURES } from '../lib/constants/shikoku';
 
 const StlViewer = dynamic(() => import('./components/StlViewer'), { ssr: false });
 
@@ -17,6 +18,7 @@ const FILE_SIZES: Record<string, string> = {
   '21': '131.0 MB', '22': '93.4 MB', '23': '61.5 MB',
   '24': '66.8 MB', '25': '47.8 MB', '26': '50.7 MB', '27': '21.7 MB', '28': '93.3 MB', '29': '43.7 MB', '30': '54.1 MB',
   '31': '42.2 MB', '32': '75.7 MB', '33': '84.4 MB', '34': '95.9 MB', '35': '68.1 MB',
+  '36': '41.9 MB', '37': '19.2 MB', '38': '59.3 MB', '39': '81.7 MB',
 };
 
 const GROUPS = [
@@ -25,6 +27,7 @@ const GROUPS = [
   { label: '中部地方', prefectures: CHUBU_PREFECTURES },
   { label: '近畿地方', prefectures: KINKI_PREFECTURES },
   { label: '中国地方', prefectures: CHUGOKU_PREFECTURES },
+  { label: '四国地方', prefectures: SHIKOKU_PREFECTURES },
 ];
 
 export default function HomePage() {
