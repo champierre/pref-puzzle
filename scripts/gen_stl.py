@@ -512,7 +512,9 @@ def build_text_walls(bbox, values, base_z, dec, text_mask):
     R, C = np.meshgrid(np.arange(0, rows, dec), np.arange(0, cols, dec), indexing='ij')
     R2 = np.minimum(R + dec, rows-1)
     C2 = np.minimum(C + dec, cols-1)
-    valid    = ~np.isnan(values[R, C])
+    # 4隅のいずれかが有効なら有効とみなす（build_bottom と同様）
+    valid = ~(np.isnan(values[R, C]) & np.isnan(values[R2, C]) &
+              np.isnan(values[R, C2]) & np.isnan(values[R2, C2]))
     tm_rows, tm_cols = text_mask.shape  # プーリング済みサイズ
     is_text  = text_mask[R // dec, C // dec]
 
@@ -520,29 +522,36 @@ def build_text_walls(bbox, values, base_z, dec, text_mask):
         nr = R + dr; nc = C + dc
         oob = (nr < 0) | (nr >= rows) | (nc < 0) | (nc >= cols)
         nr_s = np.clip(nr, 0, rows-1); nc_s = np.clip(nc, 0, cols-1)
+        nr_s2 = np.minimum(nr_s + dec, rows-1); nc_s2 = np.minimum(nc_s + dec, cols-1)
         # プーリング済みマスクでの隣接ブロックインデックス
         nr_p = np.clip(nr_s // dec, 0, tm_rows - 1)
         nc_p = np.clip(nc_s // dec, 0, tm_cols - 1)
-        return valid & is_text & ~oob & ~text_mask[nr_p, nc_p] & ~np.isnan(values[nr_s, nc_s])
+        nbr_valid = ~(np.isnan(values[nr_s, nc_s]) & np.isnan(values[nr_s2, nc_s]) &
+                      np.isnan(values[nr_s, nc_s2]) & np.isnan(values[nr_s2, nc_s2]))
+        # 隣ブロックが「境界内 かつ 有効 かつ テキスト」でなければ壁が必要
+        # (OOB・海・非テキスト陸地すべてをカバー)
+        nbr_is_text = ~oob & text_mask[nr_p, nc_p] & nbr_valid
+        return valid & is_text & ~nbr_is_text
 
     bz_fn = lambda n: np.full(n, bz_txt, dtype=np.float32)
     parts = []
-    m = nbr_non_text(-dec, 0)  # 上隣が非テキスト
+    # p1/p2 の順序は底面クワッドのエッジ方向と逆向き（多様体）かつ外向き法線になるよう設定
+    m = nbr_non_text(-dec, 0)  # 上隣が非テキスト → 壁は北向き（上側境界）
     if m.any():
         r,c,c2 = R[m],C[m],C2[m]; ba = bz_fn(m.sum())
-        parts.append(_wall_quads(wx[r,c2],wy[r,c2],ba, wx[r,c],wy[r,c],ba, bz_bg))
-    m = nbr_non_text(dec, 0)   # 下隣が非テキスト
+        parts.append(_wall_quads(wx[r,c],wy[r,c],ba, wx[r,c2],wy[r,c2],ba, bz_bg))
+    m = nbr_non_text(dec, 0)   # 下隣が非テキスト → 壁は南向き（下側境界）
     if m.any():
         r2,c,c2 = R2[m],C[m],C2[m]; ba = bz_fn(m.sum())
-        parts.append(_wall_quads(wx[r2,c],wy[r2,c],ba, wx[r2,c2],wy[r2,c2],ba, bz_bg))
-    m = nbr_non_text(0, -dec)  # 左隣が非テキスト
+        parts.append(_wall_quads(wx[r2,c2],wy[r2,c2],ba, wx[r2,c],wy[r2,c],ba, bz_bg))
+    m = nbr_non_text(0, -dec)  # 左隣が非テキスト → 壁は西向き（左側境界）
     if m.any():
         r,r2,c = R[m],R2[m],C[m]; ba = bz_fn(m.sum())
-        parts.append(_wall_quads(wx[r,c],wy[r,c],ba, wx[r2,c],wy[r2,c],ba, bz_bg))
-    m = nbr_non_text(0, dec)   # 右隣が非テキスト
+        parts.append(_wall_quads(wx[r2,c],wy[r2,c],ba, wx[r,c],wy[r,c],ba, bz_bg))
+    m = nbr_non_text(0, dec)   # 右隣が非テキスト → 壁は東向き（右側境界）
     if m.any():
         r,r2,c2 = R[m],R2[m],C2[m]; ba = bz_fn(m.sum())
-        parts.append(_wall_quads(wx[r2,c2],wy[r2,c2],ba, wx[r,c2],wy[r,c2],ba, bz_bg))
+        parts.append(_wall_quads(wx[r,c2],wy[r,c2],ba, wx[r2,c2],wy[r2,c2],ba, bz_bg))
     return np.concatenate(parts) if parts else np.zeros(0, dtype=STL_TRI)
 
 # ── STL 書き出し ──────────────────────────────────────────────────────────
