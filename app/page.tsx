@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { KANTO_PREFECTURES, BASE_PATH } from '../lib/constants/kanto';
 import { HOKKAIDO_PREFECTURES } from '../lib/constants/hokkaido';
 import { CHUGOKU_PREFECTURES } from '../lib/constants/chugoku';
+import { TOKAI_PREFECTURES } from '../lib/constants/tokai';
 
 const StlViewer = dynamic(() => import('./components/StlViewer'), { ssr: false });
 
@@ -11,12 +12,14 @@ const FILE_SIZES: Record<string, string> = {
   '01d': '1.5 MB', '01c': '5.4 MB', '01n': '4.7 MB', '01e': '7.6 MB',
   '08': '75.7 MB', '09': '80.8 MB', '10': '79.6 MB',
   '11': '46.9 MB', '12': '62.1 MB', '13': '21.3 MB', '14': '28.7 MB',
+  '21': '131.0 MB', '22': '93.4 MB', '23': '61.5 MB', '24': '66.8 MB',
   '31': '42.2 MB', '32': '75.7 MB', '33': '84.4 MB', '34': '95.9 MB', '35': '68.1 MB',
 };
 
 const GROUPS = [
   { label: '北海道', prefectures: HOKKAIDO_PREFECTURES },
   { label: '関東地方', prefectures: KANTO_PREFECTURES },
+  { label: '東海地方', prefectures: TOKAI_PREFECTURES },
   { label: '中国地方', prefectures: CHUGOKU_PREFECTURES },
 ];
 
