@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { KANTO_PREFECTURES, BASE_PATH } from '../lib/constants/kanto';
 import { HOKKAIDO_PREFECTURES } from '../lib/constants/hokkaido';
 import { CHUGOKU_PREFECTURES } from '../lib/constants/chugoku';
-import { TOKAI_PREFECTURES } from '../lib/constants/tokai';
+import { CHUBU_PREFECTURES } from '../lib/constants/chubu';
 
 const StlViewer = dynamic(() => import('./components/StlViewer'), { ssr: false });
 
@@ -12,20 +12,30 @@ const FILE_SIZES: Record<string, string> = {
   '01d': '1.5 MB', '01c': '5.4 MB', '01n': '4.7 MB', '01e': '7.6 MB',
   '08': '75.7 MB', '09': '80.8 MB', '10': '79.6 MB',
   '11': '46.9 MB', '12': '62.1 MB', '13': '21.3 MB', '14': '28.7 MB',
-  '21': '131.0 MB', '22': '93.4 MB', '23': '61.5 MB', '24': '66.8 MB',
+  '15': '143.4 MB', '16': '50.5 MB', '17': '50.7 MB', '18': '50.1 MB', '19': '52.4 MB', '20': '144.3 MB',
+  '21': '131.0 MB', '22': '93.4 MB', '23': '61.5 MB',
   '31': '42.2 MB', '32': '75.7 MB', '33': '84.4 MB', '34': '95.9 MB', '35': '68.1 MB',
 };
 
 const GROUPS = [
   { label: '北海道', prefectures: HOKKAIDO_PREFECTURES },
   { label: '関東地方', prefectures: KANTO_PREFECTURES },
-  { label: '東海地方', prefectures: TOKAI_PREFECTURES },
+  { label: '中部地方', prefectures: CHUBU_PREFECTURES },
   { label: '中国地方', prefectures: CHUGOKU_PREFECTURES },
 ];
 
 export default function HomePage() {
   const [zipping, setZipping] = useState(false);
   const [preview, setPreview] = useState<{ code: string; name: string; color: string } | null>(null);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(GROUPS.map(g => g.label)));
+
+  function toggleGroup(label: string) {
+    setOpenGroups(prev => {
+      const next = new Set(prev);
+      next.has(label) ? next.delete(label) : next.add(label);
+      return next;
+    });
+  }
 
   async function downloadZip() {
     setZipping(true);
@@ -64,44 +74,55 @@ export default function HomePage() {
           </p>
         </header>
 
-        {GROUPS.map((group) => (
-          <section key={group.label} className="flex flex-col gap-2">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest border-b border-gray-800 pb-2">
-              {group.label}
-            </h2>
-            <ul className="flex flex-col divide-y divide-gray-800">
-              {group.prefectures.map((p) => (
-                <li key={p.code} className="flex items-center justify-between py-4 gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-1 h-8 rounded-full flex-shrink-0" style={{ background: p.color }} />
-                    <div>
-                      <span className="font-semibold">{p.name}</span>
-                      <span className="ml-2 text-gray-500 text-sm">{p.nameEn}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 flex-shrink-0">
-                    <button
-                      onClick={() => setPreview({ code: p.code, name: p.name, color: p.color })}
-                      className="text-sm text-gray-500 hover:text-gray-200 transition-colors"
-                    >
-                      プレビュー
-                    </button>
-                    <div className="flex flex-col items-end gap-0.5">
-                      <a
-                        href={`${BASE_PATH}/data/stl/${p.code}.stl`}
-                        download={`${p.code}_${p.nameEn}.stl`}
-                        className="bg-blue-600 hover:bg-blue-500 transition-colors px-3 py-1.5 rounded text-sm font-medium"
-                      >
-                        ダウンロード
-                      </a>
-                      <span className="text-gray-600 text-xs">{FILE_SIZES[p.code]}</span>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
+        {GROUPS.map((group) => {
+          const isOpen = openGroups.has(group.label);
+          return (
+            <section key={group.label} className="flex flex-col">
+              <button
+                onClick={() => toggleGroup(group.label)}
+                className="flex items-center justify-between border-b border-gray-800 pb-2 group"
+              >
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest group-hover:text-gray-300 transition-colors">
+                  {group.label}
+                </h2>
+                <span className={`text-gray-600 text-xs transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+              </button>
+              {isOpen && (
+                <ul className="flex flex-col divide-y divide-gray-800">
+                  {group.prefectures.map((p) => (
+                    <li key={p.code} className="flex items-center justify-between py-4 gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="w-1 h-8 rounded-full flex-shrink-0" style={{ background: p.color }} />
+                        <div>
+                          <span className="font-semibold">{p.name}</span>
+                          <span className="ml-2 text-gray-500 text-sm">{p.nameEn}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 flex-shrink-0">
+                        <button
+                          onClick={() => setPreview({ code: p.code, name: p.name, color: p.color })}
+                          className="text-sm text-gray-500 hover:text-gray-200 transition-colors"
+                        >
+                          プレビュー
+                        </button>
+                        <div className="flex flex-col items-end gap-0.5">
+                          <a
+                            href={`${BASE_PATH}/data/stl/${p.code}.stl`}
+                            download={`${p.code}_${p.nameEn}.stl`}
+                            className="bg-blue-600 hover:bg-blue-500 transition-colors px-3 py-1.5 rounded text-sm font-medium"
+                          >
+                            ダウンロード
+                          </a>
+                          <span className="text-gray-600 text-xs">{FILE_SIZES[p.code]}</span>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          );
+        })}
 
         <button
           onClick={downloadZip}
