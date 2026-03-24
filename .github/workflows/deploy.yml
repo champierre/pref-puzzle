@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        code: ['01d', '01c', '01n', '01e', '08', '09', '10', '11', '12', '13', '14']
+        code: ['01d', '01c', '01n', '01e', '08', '09', '10', '11', '12', '13', '14', '31', '32', '33', '34', '35']
     steps:
       - uses: actions/checkout@v4
 
