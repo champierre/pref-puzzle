@@ -53,7 +53,7 @@ PUZZLE_BBOXES = {
     '30': dict(minLon=134.80, maxLon=136.10, minLat=33.40, maxLat=34.50),  # 和歌山
     '31': dict(minLon=133.00, maxLon=134.80, minLat=35.00, maxLat=35.80),  # 鳥取
     '32': dict(minLon=131.60, maxLon=133.60, minLat=34.20, maxLat=35.80),  # 島根（本土）
-    '33': dict(minLon=133.00, maxLon=134.60, minLat=34.30, maxLat=35.30),  # 岡山
+    '33': dict(minLon=133.00, maxLon=134.60, minLat=34.30, maxLat=35.50),  # 岡山
     '34': dict(minLon=131.80, maxLon=133.50, minLat=34.00, maxLat=35.10),  # 広島
     '35': dict(minLon=130.60, maxLon=132.60, minLat=33.60, maxLat=34.90),  # 山口
     '36': dict(minLon=133.50, maxLon=135.00, minLat=33.40, maxLat=34.50),  # 徳島
