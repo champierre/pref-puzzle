@@ -35,31 +35,31 @@ PUZZLE_BBOXES = {
     '12': dict(minLon=139.60, maxLon=141.00, minLat=34.80, maxLat=36.20),  # 千葉
     '13': dict(minLon=138.90, maxLon=139.95, minLat=35.40, maxLat=35.90),  # 東京（本土）
     '14': dict(minLon=138.80, maxLon=140.00, minLat=35.00, maxLat=35.80),  # 神奈川
-    '15': dict(minLon=137.50, maxLon=139.60, minLat=36.70, maxLat=38.60),  # 新潟（本土）
-    '16': dict(minLon=136.80, maxLon=137.70, minLat=36.40, maxLat=37.00),  # 富山
-    '17': dict(minLon=136.30, maxLon=137.40, minLat=36.10, maxLat=37.90),  # 石川
-    '18': dict(minLon=135.50, maxLon=136.90, minLat=35.40, maxLat=36.30),  # 福井
-    '19': dict(minLon=138.10, maxLon=139.20, minLat=35.10, maxLat=35.90),  # 山梨
-    '20': dict(minLon=137.00, maxLon=138.60, minLat=35.20, maxLat=36.70),  # 長野
-    '21': dict(minLon=135.50, maxLon=137.80, minLat=35.20, maxLat=36.80),  # 岐阜
+    '15': dict(minLon=137.50, maxLon=140.00, minLat=36.70, maxLat=38.60),  # 新潟（本土）
+    '16': dict(minLon=136.70, maxLon=137.80, minLat=36.20, maxLat=37.00),  # 富山
+    '17': dict(minLon=136.10, maxLon=137.40, minLat=36.00, maxLat=37.90),  # 石川
+    '18': dict(minLon=135.30, maxLon=136.90, minLat=35.20, maxLat=36.30),  # 福井
+    '19': dict(minLon=138.10, maxLon=139.20, minLat=35.10, maxLat=36.00),  # 山梨
+    '20': dict(minLon=137.00, maxLon=138.80, minLat=35.20, maxLat=37.20),  # 長野
+    '21': dict(minLon=135.50, maxLon=137.80, minLat=35.00, maxLat=36.80),  # 岐阜
     '22': dict(minLon=137.30, maxLon=139.20, minLat=34.40, maxLat=35.80),  # 静岡（本土）
     '23': dict(minLon=136.60, maxLon=137.90, minLat=34.40, maxLat=35.60),  # 愛知
     '24': dict(minLon=135.70, maxLon=136.90, minLat=33.70, maxLat=35.50),  # 三重
-    '25': dict(minLon=135.70, maxLon=136.40, minLat=34.80, maxLat=35.70),  # 滋賀
-    '26': dict(minLon=135.00, maxLon=135.90, minLat=34.70, maxLat=35.80),  # 京都（本土）
-    '27': dict(minLon=135.10, maxLon=135.80, minLat=34.20, maxLat=35.00),  # 大阪
+    '25': dict(minLon=135.70, maxLon=136.60, minLat=34.70, maxLat=35.80),  # 滋賀
+    '26': dict(minLon=134.70, maxLon=136.20, minLat=34.70, maxLat=35.80),  # 京都（本土）
+    '27': dict(minLon=134.90, maxLon=135.80, minLat=34.20, maxLat=35.20),  # 大阪
     '28': dict(minLon=134.20, maxLon=135.50, minLat=34.00, maxLat=35.70),  # 兵庫（本土）
-    '29': dict(minLon=135.60, maxLon=136.30, minLat=33.90, maxLat=34.80),  # 奈良
-    '30': dict(minLon=135.00, maxLon=136.10, minLat=33.40, maxLat=34.50),  # 和歌山
+    '29': dict(minLon=135.40, maxLon=136.30, minLat=33.70, maxLat=34.80),  # 奈良
+    '30': dict(minLon=134.80, maxLon=136.10, minLat=33.40, maxLat=34.50),  # 和歌山
     '31': dict(minLon=133.00, maxLon=134.80, minLat=35.00, maxLat=35.80),  # 鳥取
     '32': dict(minLon=131.60, maxLon=133.60, minLat=34.20, maxLat=35.80),  # 島根（本土）
     '33': dict(minLon=133.00, maxLon=134.60, minLat=34.30, maxLat=35.30),  # 岡山
     '34': dict(minLon=131.80, maxLon=133.50, minLat=34.00, maxLat=35.10),  # 広島
-    '35': dict(minLon=130.60, maxLon=132.30, minLat=33.60, maxLat=34.90),  # 山口
-    '36': dict(minLon=133.80, maxLon=134.80, minLat=33.70, maxLat=34.50),  # 徳島
-    '37': dict(minLon=133.40, maxLon=134.50, minLat=34.00, maxLat=34.50),  # 香川
-    '38': dict(minLon=132.00, maxLon=133.70, minLat=33.00, maxLat=34.40),  # 愛媛（本土）
-    '39': dict(minLon=132.50, maxLon=134.30, minLat=32.70, maxLat=33.90),  # 高知
+    '35': dict(minLon=130.60, maxLon=132.60, minLat=33.60, maxLat=34.90),  # 山口
+    '36': dict(minLon=133.50, maxLon=135.00, minLat=33.40, maxLat=34.50),  # 徳島
+    '37': dict(minLon=133.40, maxLon=134.50, minLat=34.00, maxLat=34.70),  # 香川
+    '38': dict(minLon=132.00, maxLon=133.70, minLat=32.70, maxLat=34.40),  # 愛媛（本土）
+    '39': dict(minLon=132.30, maxLon=134.50, minLat=32.70, maxLat=33.90),  # 高知
 }
 
 # デフォルトパラメータ
