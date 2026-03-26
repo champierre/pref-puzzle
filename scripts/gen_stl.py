@@ -39,7 +39,7 @@ PUZZLE_BBOXES = {
     '16': dict(minLon=136.80, maxLon=137.70, minLat=36.40, maxLat=37.00),  # 富山
     '17': dict(minLon=136.30, maxLon=137.40, minLat=36.10, maxLat=37.90),  # 石川
     '18': dict(minLon=135.50, maxLon=136.90, minLat=35.40, maxLat=36.30),  # 福井
-    '19': dict(minLon=138.20, maxLon=139.20, minLat=35.30, maxLat=35.90),  # 山梨
+    '19': dict(minLon=138.10, maxLon=139.20, minLat=35.10, maxLat=35.90),  # 山梨
     '20': dict(minLon=137.00, maxLon=138.60, minLat=35.20, maxLat=36.70),  # 長野
     '21': dict(minLon=135.50, maxLon=137.80, minLat=35.20, maxLat=36.80),  # 岐阜
     '22': dict(minLon=137.30, maxLon=139.20, minLat=34.40, maxLat=35.80),  # 静岡（本土）
