@@ -2,7 +2,7 @@
 
 国土地理院の数値標高モデル（DEM）と国土交通省の行政区域データから生成した、都道府県の地形 3D プリント用 STL ファイルを配布するサイトです。
 
-🌐 **サイト**: https://champierre.github.io/pref-puzzle/
+🌐 **サイト**: https://tukumanalab.github.io/pref-puzzle/
 
 ## 特徴
 
