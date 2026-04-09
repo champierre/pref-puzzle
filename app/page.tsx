@@ -3,10 +3,12 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { KANTO_PREFECTURES, BASE_PATH } from '../lib/constants/kanto';
 import { HOKKAIDO_PREFECTURES } from '../lib/constants/hokkaido';
+import { TOHOKU_PREFECTURES } from '../lib/constants/tohoku';
 import { CHUGOKU_PREFECTURES } from '../lib/constants/chugoku';
 import { CHUBU_PREFECTURES } from '../lib/constants/chubu';
 import { KINKI_PREFECTURES } from '../lib/constants/kinki';
 import { SHIKOKU_PREFECTURES } from '../lib/constants/shikoku';
+import { KYUSHU_PREFECTURES } from '../lib/constants/kyushu';
 
 const StlViewer = dynamic(() => import('./components/StlViewer'), { ssr: false });
 
@@ -16,18 +18,22 @@ const FILE_SIZES: Record<string, string> = {
   '11': '46.9 MB', '12': '62.1 MB', '13': '21.3 MB', '14': '28.7 MB',
   '15': '149.7 MB', '16': '53.3 MB', '17': '50.6 MB', '18': '50.7 MB', '19': '54.8 MB', '20': '168.8 MB',
   '21': '131.0 MB', '22': '93.4 MB', '23': '61.5 MB',
-  '24': '66.8 MB', '25': '48.8 MB', '26': '55.4 MB', '27': '21.8 MB', '28': '93.3 MB', '29': '43.7 MB', '30': '54.1 MB',
+  '24': '66.8 MB', '25': '48.8 MB', '26': '55.4 MB', '27': '21.8 MB', '28': '93.3 MB', '29': '45.8 MB', '30': '54.1 MB',
   '31': '42.2 MB', '32': '75.7 MB', '33': '84.9 MB', '34': '95.9 MB', '35': '68.1 MB',
   '36': '48.3 MB', '37': '19.1 MB', '38': '61.3 MB', '39': '81.7 MB',
+  '02': '135.0 MB', '03': '208.0 MB', '04': '94.7 MB', '05': '159.0 MB', '06': '123.0 MB', '07': '177.3 MB',
+  '40': '56.9 MB', '41': '27.8 MB', '42': '27.7 MB', '43': '75.4 MB', '44': '72.4 MB', '45': '87.1 MB', '46': '73.3 MB', '47': '11.9 MB',
 };
 
 const GROUPS = [
   { label: '北海道', prefectures: HOKKAIDO_PREFECTURES },
+  { label: '東北地方', prefectures: TOHOKU_PREFECTURES },
   { label: '関東地方', prefectures: KANTO_PREFECTURES },
   { label: '中部地方', prefectures: CHUBU_PREFECTURES },
   { label: '近畿地方', prefectures: KINKI_PREFECTURES },
   { label: '中国地方', prefectures: CHUGOKU_PREFECTURES },
   { label: '四国地方', prefectures: SHIKOKU_PREFECTURES },
+  { label: '九州地方', prefectures: KYUSHU_PREFECTURES },
 ];
 
 export default function HomePage() {

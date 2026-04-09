@@ -1,13 +1,13 @@
 import type { PrefectureInfo, BBox } from '../types';
 
 export const KANTO_PREFECTURES: PrefectureInfo[] = [
-  { code:'08', name:'茨城県',  capital:'水戸',     nameEn:'Ibaraki',  capitalEn:'Mito',       color:'#4ade80' },
-  { code:'09', name:'栃木県',  capital:'宇都宮',   nameEn:'Tochigi',  capitalEn:'Utsunomiya', color:'#60a5fa' },
-  { code:'10', name:'群馬県',  capital:'前橋',     nameEn:'Gunma',    capitalEn:'Maebashi',   color:'#f97316' },
-  { code:'11', name:'埼玉県',  capital:'さいたま', nameEn:'Saitama',  capitalEn:'Saitama',    color:'#a78bfa' },
-  { code:'12', name:'千葉県',  capital:'千葉',     nameEn:'Chiba',    capitalEn:'Chiba',      color:'#fb923c' },
-  { code:'13', name:'東京都',  capital:'東京',     nameEn:'Tokyo',    capitalEn:'Tokyo',      color:'#f43f5e' },
-  { code:'14', name:'神奈川県', capital:'横浜',    nameEn:'Kanagawa', capitalEn:'Yokohama',   color:'#facc15' },
+  { code:'08', name:'茨城県',  capital:'水戸',     nameEn:'Ibaraki',  capitalEn:'Mito',       color:'#6ee7b7' },
+  { code:'09', name:'栃木県',  capital:'宇都宮',   nameEn:'Tochigi',  capitalEn:'Utsunomiya', color:'#6ee7b7' },
+  { code:'10', name:'群馬県',  capital:'前橋',     nameEn:'Gunma',    capitalEn:'Maebashi',   color:'#6ee7b7' },
+  { code:'11', name:'埼玉県',  capital:'さいたま', nameEn:'Saitama',  capitalEn:'Saitama',    color:'#6ee7b7' },
+  { code:'12', name:'千葉県',  capital:'千葉',     nameEn:'Chiba',    capitalEn:'Chiba',      color:'#6ee7b7' },
+  { code:'13', name:'東京都',  capital:'東京',     nameEn:'Tokyo',    capitalEn:'Tokyo',      color:'#6ee7b7' },
+  { code:'14', name:'神奈川県', capital:'横浜',    nameEn:'Kanagawa', capitalEn:'Yokohama',   color:'#6ee7b7' },
 ];
 
 /** @deprecated Use PUZZLE_BBOXES['13'] */

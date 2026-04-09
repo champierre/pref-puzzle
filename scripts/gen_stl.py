@@ -44,7 +44,7 @@ PUZZLE_BBOXES = {
     '21': dict(minLon=135.50, maxLon=137.80, minLat=35.00, maxLat=36.80),  # 岐阜
     '22': dict(minLon=137.30, maxLon=139.20, minLat=34.40, maxLat=35.80),  # 静岡（本土）
     '23': dict(minLon=136.60, maxLon=137.90, minLat=34.40, maxLat=35.60),  # 愛知
-    '24': dict(minLon=135.70, maxLon=136.90, minLat=33.70, maxLat=35.50),  # 三重
+    '24': dict(minLon=135.70, maxLon=137.10, minLat=33.70, maxLat=35.50),  # 三重
     '25': dict(minLon=135.70, maxLon=136.60, minLat=34.70, maxLat=35.80),  # 滋賀
     '26': dict(minLon=134.70, maxLon=136.20, minLat=34.70, maxLat=35.80),  # 京都（本土）
     '27': dict(minLon=134.90, maxLon=135.80, minLat=34.20, maxLat=35.20),  # 大阪
@@ -60,6 +60,20 @@ PUZZLE_BBOXES = {
     '37': dict(minLon=133.40, maxLon=134.50, minLat=34.00, maxLat=34.70),  # 香川
     '38': dict(minLon=132.00, maxLon=133.70, minLat=32.70, maxLat=34.40),  # 愛媛（本土）
     '39': dict(minLon=132.30, maxLon=134.50, minLat=32.70, maxLat=33.90),  # 高知
+    '02': dict(minLon=139.80, maxLon=141.80, minLat=40.20, maxLat=41.60),  # 青森（本土）
+    '03': dict(minLon=140.50, maxLon=142.10, minLat=38.70, maxLat=40.50),  # 岩手
+    '04': dict(minLon=140.10, maxLon=141.80, minLat=37.60, maxLat=39.05),  # 宮城
+    '05': dict(minLon=139.50, maxLon=141.30, minLat=38.70, maxLat=40.70),  # 秋田
+    '06': dict(minLon=139.50, maxLon=141.20, minLat=37.40, maxLat=39.20),  # 山形
+    '07': dict(minLon=139.00, maxLon=141.50, minLat=36.70, maxLat=38.05),  # 福島
+    '40': dict(minLon=130.00, maxLon=131.30, minLat=33.00, maxLat=34.30),  # 福岡
+    '41': dict(minLon=129.50, maxLon=130.60, minLat=32.95, maxLat=33.70),  # 佐賀
+    '42': dict(minLon=129.20, maxLon=130.40, minLat=32.50, maxLat=33.90),  # 長崎（本土）
+    '43': dict(minLon=130.35, maxLon=131.50, minLat=32.05, maxLat=33.20),  # 熊本（本土）
+    '44': dict(minLon=130.60, maxLon=132.15, minLat=32.70, maxLat=33.80),  # 大分
+    '45': dict(minLon=130.60, maxLon=131.95, minLat=31.30, maxLat=32.90),  # 宮崎
+    '46': dict(minLon=130.05, maxLon=131.40, minLat=30.90, maxLat=32.25),  # 鹿児島（本土）
+    '47': dict(minLon=127.60, maxLon=128.40, minLat=26.00, maxLat=26.95),  # 沖縄（本島）
 }
 
 # デフォルトパラメータ
@@ -70,7 +84,7 @@ BASE_THICK    = 3.0
 DECIMATION    = 4   # 1 にすると ~200MB/県
 CLEARANCE_PX  = 8   # 境界クリアランス（ピクセル数、約0.27mm/辺）
 
-CODES = ['01d', '01c', '01n', '01e', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39']
+CODES = ['01d', '01c', '01n', '01e', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47']
 
 # 都道府県固有のパラメータ（グローバルデフォルトからの上書き）
 PREFECTURE_PARAMS = {
@@ -123,6 +137,20 @@ PREFECTURE_INFO = {
     '37': ('37', '香川県', '高松市'),
     '38': ('38', '愛媛県', '松山市'),
     '39': ('39', '高知県', '高知市'),
+    '02': ('02', '青森県', '青森市'),
+    '03': ('03', '岩手県', '盛岡市'),
+    '04': ('04', '宮城県', '仙台市'),
+    '05': ('05', '秋田県', '秋田市'),
+    '06': ('06', '山形県', '山形市'),
+    '07': ('07', '福島県', '福島市'),
+    '40': ('40', '福岡県', '福岡市'),
+    '41': ('41', '佐賀県', '佐賀市'),
+    '42': ('42', '長崎県', '長崎市'),
+    '43': ('43', '熊本県', '熊本市'),
+    '44': ('44', '大分県', '大分市'),
+    '45': ('45', '宮崎県', '宮崎市'),
+    '46': ('46', '鹿児島県', '鹿児島市'),
+    '47': ('47', '沖縄県', '那覇市'),
 }
 
 # ── タイル座標変換 ─────────────────────────────────────────────────────────
@@ -275,10 +303,18 @@ def feature_to_polygons(feature, code):
         return []
     coord_dec = PREFECTURE_PARAMS.get(code, {}).get('coord_decimals', 5)
     main_idx = find_main_component(candidates, coord_decimals=coord_dec)
-    excluded = len(candidates) - len(main_idx)
-    if excluded:
-        print(f'  飛び地/島を除外: {excluded} ポリゴン（本土連結成分外）')
-    return [rings for i, (_, rings) in enumerate(candidates) if i in main_idx]
+    # 孤立していても面積が大きいポリゴンは内陸飛び地として保持する
+    # （例: 和歌山県北山村など、隣接県に囲まれた飛び地市区町村）
+    MIN_ENCLAVE_AREA = 0.0003  # 約 3km²相当（小島は除外、市区町村規模は保持）
+    enclave_idx = {i for i, (area, _) in enumerate(candidates)
+                   if i not in main_idx and area >= MIN_ENCLAVE_AREA}
+    keep_idx = main_idx | enclave_idx
+    n_island = len(candidates) - len(keep_idx)
+    if n_island:
+        print(f'  離島/小島を除外: {n_island} ポリゴン')
+    if enclave_idx:
+        print(f'  内陸飛び地を保持: {len(enclave_idx)} ポリゴン')
+    return [rings for i, (_, rings) in enumerate(candidates) if i in keep_idx]
 
 # ── ポリゴン塗りつぶしクリッピング（PIL使用） ──────────────────────────────
 def clip_dem(bbox, values, polygons):
@@ -304,6 +340,23 @@ def clip_dem(bbox, values, polygons):
             draw.polygon(pixels, fill=255)
 
     mask = np.array(mask_img) > 0
+
+    # ピンチポイント修復: 単一頂点で接する複数ポリゴンが生む対角のみ接続（クロス型ギャップ）を
+    # 1反復 8連結閉包（膨張→収縮）で埋める。
+    # 内部ギャップ（四方に有効ピクセルが存在する）は埋まったまま維持され、
+    # 境界ギャップ（外側が空）は収縮で除去されるため離島には影響しない。
+    m = mask.astype(np.uint8)
+    dirs = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
+    d = m.copy()
+    for dr, dc in dirs:
+        d |= np.roll(np.roll(m, dr, axis=0), dc, axis=1)
+    d[0,:]=0; d[-1,:]=0; d[:,0]=0; d[:,-1]=0
+    e = d.copy()
+    for dr, dc in dirs:
+        e &= np.roll(np.roll(d, dr, axis=0), dc, axis=1)
+    e[0,:]=0; e[-1,:]=0; e[:,0]=0; e[:,-1]=0
+    mask = e.astype(bool)
+
     clipped = np.where(mask, values, np.nan)
     return clipped
 
