@@ -112,6 +112,12 @@ npm run build # 静的エクスポート → out/
 
 初回は GitHub リポジトリの **Settings → Pages → Source** を **「GitHub Actions」** に変更してください。
 
+## AI エージェント向け再現プロンプト
+
+→ [PROMPT.md](./PROMPT.md)
+
+---
+
 ## データライセンス
 
 - 地形データ: [国土地理院 基盤地図情報数値標高モデル](https://maps.gsi.go.jp/development/ichiran.html)
